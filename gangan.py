@@ -51,7 +51,7 @@ generator = make_generator_model()
 noise = tf.random.normal([1, 100])
 generated_image = generator(noise, training=False)
 
-plt.imshow(generated_image[0, :, :, 0], cmap='gray')
+plt.imshow(generated_image[0, :, :, 0], cmap='spring')
 
 
 def make_discriminator_model():
@@ -96,9 +96,9 @@ checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                                  generator=generator,
                                  discriminator=discriminator)
 
-EPOCHS = 2
+EPOCHS = 20
 noise_dim = 100
-num_examples_to_generate = 16
+num_examples_to_generate = 64
 
 # We will reuse this seed overtime (so it's easier)
 # to visualize progress in the animated GIF)
@@ -143,16 +143,45 @@ def generate_and_save_images(model, epoch, test_input):
   # This is so all layers run in inference mode (batchnorm).
   predictions = model(test_input, training=False)
 
-  fig = plt.figure(figsize=(4,4))
+  fig = plt.figure(figsize=(8,8))
 
   for i in range(predictions.shape[0]):
-      plt.subplot(4, 4, i+1)
-      plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5, cmap='gray')
+      plt.subplot(8, 8, i+1)
+      plt.imshow(predictions[i, :, :, 0] * 255 + 255, cmap='spring')
       plt.axis('off')
 
   plt.savefig('image_at_epoch_{:04d}.png'.format(epoch))
-  plt.show()
+  #plt.show()
 
 
 
 train(train_dataset, EPOCHS)
+
+checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
+
+# Display a single image using the epoch number
+def display_image(epoch_no):
+  return PIL.Image.open('image_at_epoch_{:04d}.png'.format(epoch_no))
+
+#display_image(EPOCHS)
+
+anim_file = 'dcgan.gif'
+
+with imageio.get_writer(anim_file, mode='I') as writer:
+  filenames = glob.glob('image*.png')
+  filenames = sorted(filenames)
+  last = -1
+  for i,filename in enumerate(filenames):
+    frame = 2*(i**0.5)
+    if round(frame) > round(last):
+      last = frame
+    else:
+      continue
+    image = imageio.imread(filename)
+    writer.append_data(image)
+  image = imageio.imread(filename)
+  writer.append_data(image)
+
+import IPython
+if IPython.version_info > (6,2,0,''):
+  display.Image(filename=anim_file)
